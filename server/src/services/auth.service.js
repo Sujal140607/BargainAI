@@ -78,13 +78,9 @@ export const refreshAccessToken = async (incomingRefreshToken) => {
   }
 
   const payload = { userId: user._id, role: user.role };
-  const newAccessToken = generateAccessToken(payload);
-  const newRefreshToken = generateRefreshToken(payload);
+  const accessToken = generateAccessToken(payload);
 
-  user.refreshToken = newRefreshToken;
-  await user.save();
-
-  return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  return { accessToken };
 };
 
 export const getCurrentUser = async (userId) => {
@@ -95,14 +91,23 @@ export const getCurrentUser = async (userId) => {
   return user;
 };
 
-export const logoutUser = async (userId) => {
-  const user = await User.findById(userId);
+export const logoutUser = async (incomingRefreshToken) => {
+  if (!incomingRefreshToken) {
+    throw new Error("Refresh token is required");
+  }
+
+  let decoded;
+  try {
+    decoded = verifyRefreshToken(incomingRefreshToken);
+  } catch {
+    throw new Error("Invalid or expired refresh token");
+  }
+
+  const user = await User.findById(decoded.userId);
   if (!user) {
     throw new Error("User not found");
   }
 
   user.refreshToken = null;
   await user.save();
-
-  return { message: "Logged out successfully" };
 };

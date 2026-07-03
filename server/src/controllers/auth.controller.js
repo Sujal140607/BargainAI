@@ -46,9 +46,14 @@ export const refreshToken = async (req, res, next) => {
   try {
     const incomingRefreshToken =
       req.cookies?.refreshToken || req.body?.refreshToken;
-    const tokens = await refreshAccessToken(incomingRefreshToken);
-    setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
-    res.status(200).json({ data: tokens, message: "Token refreshed successfully" });
+    const { accessToken } = await refreshAccessToken(incomingRefreshToken);
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+    res.status(200).json({ data: { accessToken }, message: "Token refreshed successfully" });
   } catch (error) {
     next(error);
   }
@@ -56,7 +61,9 @@ export const refreshToken = async (req, res, next) => {
 
 export const logout = async (req, res, next) => {
   try {
-    await logoutUser(req.user.userId);
+    const incomingRefreshToken =
+      req.cookies?.refreshToken || req.body?.refreshToken;
+    await logoutUser(incomingRefreshToken);
     res.clearCookie("accessToken");
     res.clearCookie("refreshToken");
     res.status(200).json({ message: "Logged out successfully" });
