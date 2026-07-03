@@ -87,6 +87,14 @@ export const refreshAccessToken = async (incomingRefreshToken) => {
   return { accessToken: newAccessToken, refreshToken: newRefreshToken };
 };
 
+export const getCurrentUser = async (userId) => {
+  const user = await User.findById(userId).select("-password -refreshToken");
+  if (!user) {
+    throw new Error("User not found");
+  }
+  return user;
+};
+
 export const logoutUser = async (userId) => {
   const user = await User.findById(userId);
   if (!user) {
