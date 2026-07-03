@@ -63,3 +63,7 @@ docker-data/
 # =========================
 *.tmp
 *.temp
+
+.env
+server/.env
+client/.env
