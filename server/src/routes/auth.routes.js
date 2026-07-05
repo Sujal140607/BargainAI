@@ -16,4 +16,11 @@ router.post("/refresh-token", refreshToken);
 router.post("/logout", logout);
 router.get("/me", authMiddleware, getCurrentUserController);
 
+router.get("/test", (req, res) => {
+  res.json({
+    success: true,
+    message: "Auth route working",
+  });
+});
+
 export default router;

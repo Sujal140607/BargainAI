@@ -23,7 +23,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/v1/auth", authRoutes);
 
-app.all("*", (_req, res) => {
+app.use((_req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
 });
 
