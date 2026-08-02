@@ -1,4 +1,5 @@
 import { Server } from "socket.io";
+import { registerGameSocketHandlers } from "./game.socket.js";
 
 let io;
 
@@ -13,6 +14,8 @@ export const initializeSocket = (server) => {
 
   io.on("connection", (socket) => {
     console.log(`Client Connected: ${socket.id}`);
+
+    registerGameSocketHandlers(io, socket);
 
     socket.on("disconnect", () => {
       console.log(`Client Disconnected: ${socket.id}`);

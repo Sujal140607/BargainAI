@@ -1,0 +1,15 @@
+import { Router } from "express";
+import {
+  createGame,
+  getGame,
+  endGameController,
+} from "../controllers/game.controller.js";
+import { authMiddleware } from "../middlewares/auth.middleware.js";
+
+const gamerouter = Router();
+
+gamerouter.post("/games", authMiddleware, createGame);
+gamerouter.get("/games/:id", authMiddleware, getGame);
+gamerouter.patch("/games/:id/end", authMiddleware, endGameController);
+
+export default gamerouter;
