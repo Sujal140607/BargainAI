@@ -4,6 +4,7 @@ import { RoundTracker } from "./round.engine.js";
 import { updateTrust } from "./trust.engine.js";
 import { updatePatience } from "./patience.engine.js";
 import redisClient from "../config/redis.js";
+import { parseSellerResponse } from "../ai/parsers/response.parser.js";
 
 const DECISION_REJECTED = "REJECTED";
 const DECISION_COUNTER = "COUNTER";
@@ -22,8 +23,9 @@ const resolveEmotion = (trustDelta, patience) => {
 };
 
 class NegotiationEngine {
-  constructor(redis = redisClient) {
+  constructor(redis = redisClient, aiEngine = null) {
     this.redis = redis;
+    this.aiEngine = aiEngine;
   }
 
   gameKey(gameId) {
@@ -69,7 +71,39 @@ class NegotiationEngine {
     return seller;
   }
 
-  async processOffer({ gameId, seller, offer, previousOffer = null, spam = false }) {
+  async attachAiReply(decision, seller, offer, gameState) {
+    if (!this.aiEngine) {
+      return { ...decision, reply: decision.message };
+    }
+
+    let rawResponse;
+    try {
+      rawResponse = await this.aiEngine.respond({
+        sellerState: seller.toJSON(),
+        gameState,
+        userOffer: offer,
+      });
+    } catch (error) {
+      return { ...decision, reply: decision.message, ai: null, aiFallback: true };
+    }
+
+    const parsed = parseSellerResponse(rawResponse);
+
+    if (!parsed.success) {
+      return { ...decision, reply: decision.message, ai: null, aiFallback: true };
+    }
+
+    return {
+      ...decision,
+      reply: parsed.data.reply,
+      ai: {
+        emotion: parsed.data.emotion,
+        confidence: parsed.data.confidence,
+      },
+    };
+  }
+
+  async processOffer({ gameId, seller, offer, previousOffer = null, spam = false, gameState = null }) {
     if (gameId && !seller) {
       seller = await this.loadSeller(gameId);
     }
@@ -79,16 +113,21 @@ class NegotiationEngine {
     }
 
     if (!seller.hasRoundsLeft) {
-      return {
-        status: DECISION_WALK_AWAY,
+      return this.attachAiReply(
+        {
+          status: DECISION_WALK_AWAY,
+          offer,
+          counterPrice: null,
+          finalPrice: null,
+          currentRound: seller.roundsPlayed,
+          seller: seller.toJSON(),
+          reasons: ["maximum rounds reached"],
+          message: "Seller walked away",
+        },
+        seller,
         offer,
-        counterPrice: null,
-        finalPrice: null,
-        currentRound: seller.roundsPlayed,
-        seller: seller.toJSON(),
-        reasons: ["maximum rounds reached"],
-        message: "Seller walked away",
-      };
+        gameState
+      );
     }
 
     const validation = validateOffer(offer, {
@@ -135,31 +174,41 @@ class NegotiationEngine {
     seller.emotion = resolveEmotion(trustUpdate.delta, seller.patience);
 
     if (rounds.isGameOver || patienceUpdate.walkAway) {
-      return {
-        status: DECISION_WALK_AWAY,
+      return this.attachAiReply(
+        {
+          status: DECISION_WALK_AWAY,
+          offer,
+          counterPrice: null,
+          finalPrice: null,
+          currentRound: seller.roundsPlayed,
+          seller: seller.toJSON(),
+          reasons: patienceUpdate.walkAway
+            ? ["seller patience exhausted"]
+            : ["maximum rounds reached"],
+          message: "Seller walked away",
+        },
+        seller,
         offer,
-        counterPrice: null,
-        finalPrice: null,
-        currentRound: seller.roundsPlayed,
-        seller: seller.toJSON(),
-        reasons: patienceUpdate.walkAway
-          ? ["seller patience exhausted"]
-          : ["maximum rounds reached"],
-        message: "Seller walked away",
-      };
+        gameState
+      );
     }
 
     if (offer >= seller.targetPrice) {
-      return {
-        status: DECISION_ACCEPTED,
+      return this.attachAiReply(
+        {
+          status: DECISION_ACCEPTED,
+          offer,
+          counterPrice: null,
+          finalPrice: offer,
+          currentRound: seller.roundsPlayed,
+          seller: seller.toJSON(),
+          reasons: ["offer meets target price"],
+          message: "Offer accepted",
+        },
+        seller,
         offer,
-        counterPrice: null,
-        finalPrice: offer,
-        currentRound: seller.roundsPlayed,
-        seller: seller.toJSON(),
-        reasons: ["offer meets target price"],
-        message: "Offer accepted",
-      };
+        gameState
+      );
     }
 
     const counterPrice = Math.max(
@@ -187,7 +236,7 @@ class NegotiationEngine {
       }
     }
 
-    return decision;
+    return this.attachAiReply(decision, seller, offer, gameState);
   }
 }
 

@@ -4,6 +4,8 @@ import cors from "cors";
 
 import authRoutes from "./routes/auth.routes.js";
 import gameRoutes from "./routes/game.routes.js";
+import statsRoutes from "./routes/stats.routes.js";
+import leaderboardRoutes from "./routes/leaderboard.routes.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 
 const app = express();
@@ -24,6 +26,8 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/game", gameRoutes);
+app.use("/api/v1/stats", statsRoutes);
+app.use("/api/v1/leaderboard", leaderboardRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });

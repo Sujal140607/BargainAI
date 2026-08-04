@@ -37,8 +37,7 @@ export const getGameById = async (gameId) => {
   return game;
 };
 
-export const endGame = async ({ gameId, status, result, finalPrice }) => {
-  if (!gameId) {
+export const endGame = async ({ gameId, status, result, finalPrice }) => {  if (!gameId) {
     throw new Error("Game ID is required");
   }
 
@@ -72,4 +71,22 @@ export const endGame = async ({ gameId, status, result, finalPrice }) => {
   await game.save();
 
   return game;
+};
+
+export const getGameHistory = async (userId, limit = 5) => {
+  const games = await Game.find({ user: userId, status: "COMPLETED" })
+    .sort({ startedAt: -1 })
+    .limit(limit)
+    .lean();
+
+  return games.map((game) => ({
+    id: game._id,
+    productName: game.product?.name,
+    productImage: game.product?.image,
+    category: game.product?.category,
+    marketPrice: game.product?.marketPrice,
+    finalPrice: game.finalPrice,
+    result: game.result,
+    startedAt: game.startedAt,
+  }));
 };

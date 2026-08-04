@@ -1,11 +1,17 @@
-import { Navigate, Outlet } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../features/auth/hooks/useAuth";
+import PageLoader from "./ui/PageLoader";
 
 function ProtectedRoute() {
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return <Outlet />;

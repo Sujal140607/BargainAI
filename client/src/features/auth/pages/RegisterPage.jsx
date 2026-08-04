@@ -1,32 +1,44 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import Input from "../../../components/ui/Input";
 import PasswordInput from "../../../components/ui/PasswordInput";
 import Label from "../../../components/ui/Label";
 import Button from "../../../components/ui/Button";
 import ErrorMessage from "../../../components/ui/ErrorMessage";
-import { useRegisterMutation } from "../services/authApi";
+import { useAuth } from "../hooks/useAuth";
+import { clearError } from "../redux/authSlice";
 import { registerSchema, getFieldErrors } from "../utils/validation";
-
-function getErrorMessage(error) {
-  return error?.data?.message || "Something went wrong. Please try again.";
-}
+import { getErrorMessage } from "../utils/getErrorMessage";
 
 function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState("");
-  const [register, { isLoading, error }] = useRegisterMutation();
+  const { register, isLoading, error } = useAuth();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const clearFieldError = (field) => {
     setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
+  const handleChange = (field) => (e) => {
+    const value = e.target.value;
+    if (field === "name") {
+      setName(value);
+    } else if (field === "email") {
+      setEmail(value);
+    } else {
+      setPassword(value);
+    }
+    clearFieldError(field);
+    dispatch(clearError());
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSuccessMessage("");
 
     const result = registerSchema.safeParse({ name, email, password });
     if (!result.success) {
@@ -37,20 +49,10 @@ function RegisterPage() {
     setFieldErrors({});
 
     try {
-      const registerResult = await register({
-        name,
-        email,
-        password,
-      }).unwrap();
-      setSuccessMessage(
-        `Account created successfully${
-          registerResult?.data?.user?.name
-            ? `, welcome ${registerResult.data.user.name}`
-            : ""
-        }`
-      );
+      await register({ name, email, password });
+      navigate("/dashboard", { replace: true });
     } catch {
-      // error is exposed through the mutation's `error` field
+      // error is exposed through the `error` state from useAuth
     }
   };
 
@@ -77,10 +79,7 @@ function RegisterPage() {
                 autoComplete="name"
                 placeholder="John Doe"
                 value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  clearFieldError("name");
-                }}
+                onChange={handleChange("name")}
               />
               <ErrorMessage>{fieldErrors.name}</ErrorMessage>
             </div>
@@ -94,10 +93,7 @@ function RegisterPage() {
                 autoComplete="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  clearFieldError("email");
-                }}
+                onChange={handleChange("email")}
               />
               <ErrorMessage>{fieldErrors.email}</ErrorMessage>
             </div>
@@ -110,21 +106,12 @@ function RegisterPage() {
                 autoComplete="new-password"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  clearFieldError("password");
-                }}
+                onChange={handleChange("password")}
               />
               <ErrorMessage>{fieldErrors.password}</ErrorMessage>
             </div>
 
-            <ErrorMessage>{error && getErrorMessage(error)}</ErrorMessage>
-
-            {successMessage && (
-              <p className="rounded-lg border border-emerald-800 bg-emerald-900/40 px-4 py-2.5 text-sm text-emerald-300">
-                {successMessage}
-              </p>
-            )}
+            <ErrorMessage>{getErrorMessage(error)}</ErrorMessage>
 
             <Button type="submit" disabled={isLoading}>
               {isLoading ? "Creating account…" : "Create account"}

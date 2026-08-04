@@ -2,6 +2,7 @@ import {
   createGameSession,
   getGameById,
   endGame,
+  getGameHistory,
 } from "../services/game.service.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
@@ -29,4 +30,12 @@ export const endGameController = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json({ data: game, message: "Game ended successfully" });
+});
+
+export const getGameHistoryController = asyncHandler(async (req, res) => {
+  const limit = Number(req.query.limit) || 5;
+  const games = await getGameHistory(req.user.userId, limit);
+  res
+    .status(200)
+    .json({ data: games, message: "Game history fetched successfully" });
 });

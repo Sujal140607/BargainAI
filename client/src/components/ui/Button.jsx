@@ -3,6 +3,8 @@ const VARIANTS = {
     "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-900/40 hover:from-violet-500 hover:to-indigo-500 focus:ring-violet-500/50",
   secondary:
     "border border-neutral-700 bg-neutral-800/60 text-neutral-200 hover:bg-neutral-800 focus:ring-neutral-500/30",
+  danger:
+    "border border-red-900/60 bg-red-600/15 text-red-300 hover:bg-red-600/25 focus:ring-red-500/40",
 };
 
 function Button({

@@ -1,29 +1,37 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import Input from "../../../components/ui/Input";
 import PasswordInput from "../../../components/ui/PasswordInput";
 import Label from "../../../components/ui/Label";
 import Button from "../../../components/ui/Button";
 import ErrorMessage from "../../../components/ui/ErrorMessage";
-import { useLoginMutation } from "../services/authApi";
-import { setCredentials } from "../redux/authSlice";
+import { useAuth } from "../hooks/useAuth";
+import { clearError } from "../redux/authSlice";
 import { loginSchema, getFieldErrors } from "../utils/validation";
-
-function getErrorMessage(error) {
-  return error?.data?.message || "Something went wrong. Please try again.";
-}
+import { getErrorMessage } from "../utils/getErrorMessage";
 
 function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
-  const [login, { isLoading, error }] = useLoginMutation();
+  const { login, isLoading, error } = useAuth();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const clearFieldError = (field) => {
     setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const handleChange = (field) => (e) => {
+    if (field === "email") {
+      setEmail(e.target.value);
+    } else {
+      setPassword(e.target.value);
+    }
+    clearFieldError(field);
+    dispatch(clearError());
   };
 
   const handleSubmit = async (e) => {
@@ -38,16 +46,11 @@ function LoginPage() {
     setFieldErrors({});
 
     try {
-      const loginResult = await login({ email, password }).unwrap();
-      dispatch(
-        setCredentials({
-          user: loginResult.data.user,
-          accessToken: loginResult.data.accessToken,
-        })
-      );
-      navigate("/dashboard", { replace: true });
+      await login({ email, password });
+      const from = location.state?.from?.pathname || "/dashboard";
+      navigate(from, { replace: true });
     } catch {
-      // error is exposed through the mutation's `error` field
+      // error is exposed through the `error` state from useAuth
     }
   };
 
@@ -74,10 +77,7 @@ function LoginPage() {
                 autoComplete="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  clearFieldError("email");
-                }}
+                onChange={handleChange("email")}
               />
               <ErrorMessage>{fieldErrors.email}</ErrorMessage>
             </div>
@@ -90,15 +90,12 @@ function LoginPage() {
                 autoComplete="current-password"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  clearFieldError("password");
-                }}
+                onChange={handleChange("password")}
               />
               <ErrorMessage>{fieldErrors.password}</ErrorMessage>
             </div>
 
-            <ErrorMessage>{error && getErrorMessage(error)}</ErrorMessage>
+            <ErrorMessage>{getErrorMessage(error)}</ErrorMessage>
 
             <Button type="submit" disabled={isLoading}>
               {isLoading ? "Signing in…" : "Sign in"}

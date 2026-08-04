@@ -1,40 +1,34 @@
-import { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
-import {
-  useGetCurrentUserQuery,
-  useRefreshTokenMutation,
-} from "../services/authApi";
-import { setCredentials } from "../redux/authSlice";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { registerUnauthorizedHandler } from "../../../services";
+import { bootstrapSession } from "../redux/authThunks";
+import { sessionExpired } from "../redux/authSlice";
+
+let unauthorizedHandlerRegistered = false;
 
 export function useAuthSession() {
   const dispatch = useDispatch();
-  const [sessionAccessToken, setSessionAccessToken] = useState(null);
-  const [hasRetried, setHasRetried] = useState(false);
-  const { data, error } = useGetCurrentUserQuery();
-  const [refreshToken] = useRefreshTokenMutation();
+  const status = useSelector((state) => state.auth.status);
+  const user = useSelector((state) => state.auth.user);
 
   useEffect(() => {
-    if (error && !hasRetried) {
-      refreshToken()
-        .unwrap()
-        .then((result) => {
-          setSessionAccessToken(result.data.accessToken);
-          setHasRetried(true);
-        })
-        .catch(() => {
-          setHasRetried(true);
-        });
+    if (!unauthorizedHandlerRegistered) {
+      unauthorizedHandlerRegistered = true;
+      registerUnauthorizedHandler(() => {
+        dispatch(sessionExpired());
+      });
     }
-  }, [error, hasRetried, refreshToken]);
+  }, [dispatch]);
 
   useEffect(() => {
-    if (data) {
-      dispatch(
-        setCredentials({
-          user: data.data,
-          accessToken: sessionAccessToken,
-        })
-      );
+    if (status !== "idle") {
+      return;
     }
-  }, [data, sessionAccessToken, dispatch]);
+
+    if (user) {
+      dispatch(bootstrapSession());
+    } else {
+      dispatch(sessionExpired());
+    }
+  }, [status, user, dispatch]);
 }
