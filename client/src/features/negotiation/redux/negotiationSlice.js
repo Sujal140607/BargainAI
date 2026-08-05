@@ -20,6 +20,7 @@ const initialState = {
   isSubmitting: false,
   isTyping: false,
   error: null,
+  lastOffer: null,
 };
 
 const negotiationSlice = createSlice({
@@ -36,6 +37,7 @@ const negotiationSlice = createSlice({
         state.pendingSellerMessage = null;
         state.isSubmitting = false;
         state.isTyping = false;
+        state.lastOffer = null;
       }
 
       state.gameId = gameId;
@@ -65,79 +67,82 @@ const negotiationSlice = createSlice({
         text: `I offer ${action.payload.text}`,
         at: new Date().toISOString(),
       });
+      state.lastOffer = action.payload.amount;
       state.isSubmitting = true;
       state.error = null;
     },
     sellerResponded(state, action) {
-      const decision = action.payload;
+      const {
+        reply,
+        counterOffer,
+        emotion,
+        trustScore,
+        patience,
+        currentRound,
+        gameOver,
+      } = action.payload;
 
       state.isSubmitting = false;
       state.isTyping = false;
 
-      if (decision.currentRound) {
-        state.currentRound = decision.currentRound;
-      }
-      if (decision.seller) {
-        state.seller = decision.seller;
+      if (currentRound != null) {
+        state.currentRound = currentRound;
       }
 
-      state.pendingSellerMessage = {
-        id: uid(),
-        sender: "seller",
-        text: decision.reply || decision.message,
-        at: new Date().toISOString(),
-      };
+      if (state.seller) {
+        state.seller.currentPrice = counterOffer ?? state.seller.currentPrice;
+        state.seller.trustScore = trustScore ?? state.seller.trustScore;
+        state.seller.patience = patience ?? state.seller.patience;
+        state.seller.emotion = emotion ?? state.seller.emotion;
+      }
 
-      state.history.push({
-        id: uid(),
-        round: decision.currentRound,
-        offer: decision.offer,
-        counterPrice: decision.counterPrice,
-        status: decision.status,
-        at: new Date().toISOString(),
-      });
+      if (reply) {
+        state.pendingSellerMessage = {
+          id: uid(),
+          sender: "seller",
+          text: reply,
+          at: new Date().toISOString(),
+        };
+      }
 
-      if (decision.status === "ACCEPTED" || decision.status === "WALK_AWAY") {
+      if (state.lastOffer != null) {
+        state.history.push({
+          id: uid(),
+          round: currentRound,
+          offer: state.lastOffer,
+          counterPrice: counterOffer,
+          status: gameOver ? "ACCEPTED" : counterOffer != null ? "COUNTER" : "REJECTED",
+          at: new Date().toISOString(),
+        });
+      }
+
+      if (gameOver) {
         state.status = "over";
         state.result = {
-          status: decision.status,
-          finalPrice: decision.finalPrice,
-          offer: decision.offer,
-          reasons: decision.reasons || [],
+          status: "COMPLETED",
+          finalPrice: counterOffer ?? state.seller?.currentPrice ?? null,
+          offer: state.lastOffer,
         };
+      }
+    },
+    gameUpdateReceived(state, action) {
+      const { currentPrice, trustScore, patience, round, emotion } = action.payload;
+
+      if (state.seller) {
+        state.seller.currentPrice = currentPrice ?? state.seller.currentPrice;
+        state.seller.trustScore = trustScore ?? state.seller.trustScore;
+        state.seller.patience = patience ?? state.seller.patience;
+        state.seller.emotion = emotion ?? state.seller.emotion;
+      }
+
+      if (round != null) {
+        state.currentRound = round;
       }
     },
     sellerMessageCommitted(state) {
       if (state.pendingSellerMessage) {
         state.messages.push(state.pendingSellerMessage);
         state.pendingSellerMessage = null;
-      }
-    },
-    sellerStateUpdated(state, action) {
-      const { currentRound, seller } = action.payload;
-      if (currentRound) {
-        state.currentRound = currentRound;
-      }
-      if (seller) {
-        state.seller = seller;
-      }
-    },
-    gameEnded(state, action) {
-      const decision = action.payload;
-      state.status = "over";
-      state.isSubmitting = false;
-      state.isTyping = false;
-      state.result = {
-        status: decision.status,
-        finalPrice: decision.finalPrice,
-        offer: decision.offer,
-        reasons: decision.reasons || [],
-      };
-      if (decision.seller) {
-        state.seller = decision.seller;
-      }
-      if (decision.currentRound) {
-        state.currentRound = decision.currentRound;
       }
     },
     socketStatusChanged(state, action) {
@@ -163,9 +168,8 @@ export const {
   negotiationStarted,
   offerSent,
   sellerResponded,
+  gameUpdateReceived,
   sellerMessageCommitted,
-  sellerStateUpdated,
-  gameEnded,
   socketStatusChanged,
   typingChanged,
   negotiationError,

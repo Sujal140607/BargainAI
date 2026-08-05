@@ -1,15 +1,14 @@
 import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { gameSocket, SOCKET_EVENTS } from "../../../socket";
+import { socketService, SOCKET_EVENTS } from "../../../socket";
 import { fetchGame } from "../../game/redux/gameThunks";
 import { formatCurrency } from "../../../utils/formatters";
 import {
   negotiationStarted,
   offerSent,
   sellerResponded,
+  gameUpdateReceived,
   sellerMessageCommitted,
-  sellerStateUpdated,
-  gameEnded,
   socketStatusChanged,
   typingChanged,
   negotiationError,
@@ -45,23 +44,21 @@ export function useNegotiation(gameId) {
       return;
     }
 
-    gameSocket.joinGame(gameId);
-    dispatch(socketStatusChanged(gameSocket.isConnected()));
+    socketService.connect();
+    socketService.joinGame(gameId);
+    dispatch(socketStatusChanged(socketService.isConnected()));
 
-    const handleSellerResponse = (decision) => {
-      dispatch(sellerResponded(decision));
+    const handleSellerUpdate = (payload) => {
+      dispatch(sellerResponded(payload));
     };
-    const handleRoundUpdate = (payload) => {
-      dispatch(sellerStateUpdated(payload));
+    const handleGameUpdate = (payload) => {
+      dispatch(gameUpdateReceived(payload));
     };
-    const handleGameOver = (decision) => {
-      dispatch(gameEnded(decision));
+    const handleSellerTyping = () => {
+      dispatch(typingChanged(true));
     };
-    const handleError = ({ message }) => {
-      dispatch(negotiationError(message));
-    };
-    const handleTyping = ({ isTyping }) => {
-      dispatch(typingChanged(Boolean(isTyping)));
+    const handleSellerStopTyping = () => {
+      dispatch(typingChanged(false));
     };
     const handleConnect = () => {
       dispatch(socketStatusChanged(true));
@@ -69,31 +66,34 @@ export function useNegotiation(gameId) {
     const handleDisconnect = () => {
       dispatch(socketStatusChanged(false));
     };
+    const handleError = ({ message }) => {
+      dispatch(negotiationError(message));
+    };
 
-    gameSocket.on(SOCKET_EVENTS.SELLER_RESPONSE, handleSellerResponse);
-    gameSocket.on(SOCKET_EVENTS.ROUND_UPDATE, handleRoundUpdate);
-    gameSocket.on(SOCKET_EVENTS.GAME_OVER, handleGameOver);
-    gameSocket.on(SOCKET_EVENTS.ERROR, handleError);
-    gameSocket.on(SOCKET_EVENTS.TYPING, handleTyping);
-    gameSocket.on(SOCKET_EVENTS.CONNECT, handleConnect);
-    gameSocket.on(SOCKET_EVENTS.DISCONNECT, handleDisconnect);
+    socketService.onSellerUpdate(handleSellerUpdate);
+    socketService.onGameUpdate(handleGameUpdate);
+    socketService.onSellerTyping(handleSellerTyping);
+    socketService.onSellerStopTyping(handleSellerStopTyping);
+    socketService.onError(handleError);
+    socketService.onConnect(handleConnect);
+    socketService.onDisconnect(handleDisconnect);
 
     return () => {
-      gameSocket.off(SOCKET_EVENTS.SELLER_RESPONSE, handleSellerResponse);
-      gameSocket.off(SOCKET_EVENTS.ROUND_UPDATE, handleRoundUpdate);
-      gameSocket.off(SOCKET_EVENTS.GAME_OVER, handleGameOver);
-      gameSocket.off(SOCKET_EVENTS.ERROR, handleError);
-      gameSocket.off(SOCKET_EVENTS.TYPING, handleTyping);
-      gameSocket.off(SOCKET_EVENTS.CONNECT, handleConnect);
-      gameSocket.off(SOCKET_EVENTS.DISCONNECT, handleDisconnect);
-      gameSocket.leaveGame(gameId);
+      socketService.off(SOCKET_EVENTS.SELLER_UPDATE, handleSellerUpdate);
+      socketService.off(SOCKET_EVENTS.GAME_UPDATE, handleGameUpdate);
+      socketService.off(SOCKET_EVENTS.SELLER_TYPING, handleSellerTyping);
+      socketService.off(SOCKET_EVENTS.SELLER_STOP_TYPING, handleSellerStopTyping);
+      socketService.off(SOCKET_EVENTS.ERROR, handleError);
+      socketService.off(SOCKET_EVENTS.CONNECT, handleConnect);
+      socketService.off(SOCKET_EVENTS.DISCONNECT, handleDisconnect);
+      socketService.leaveGame(gameId);
     };
   }, [productReady, gameId, dispatch]);
 
   const sendOffer = useCallback(
     (offer) => {
-      dispatch(offerSent({ text: formatCurrency(offer) }));
-      gameSocket.sendOffer(gameId, offer);
+      dispatch(offerSent({ text: formatCurrency(offer), amount: offer }));
+      socketService.sendOffer(gameId, offer);
     },
     [dispatch, gameId]
   );
@@ -103,8 +103,9 @@ export function useNegotiation(gameId) {
   }, [dispatch]);
 
   const exit = useCallback(() => {
+    socketService.leaveGame(gameId);
     dispatch(resetNegotiation());
-  }, [dispatch]);
+  }, [dispatch, gameId]);
 
   return {
     gameId,

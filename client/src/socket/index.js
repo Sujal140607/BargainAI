@@ -1,3 +1,2 @@
-export { socket, SOCKET_URL } from "./socket";
-export { gameSocket } from "./socketManager";
+export { socketService } from "./socket.service";
 export { SOCKET_EVENTS } from "./events";

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
-import { gameSocket, SOCKET_EVENTS } from "./socket";
+import { socketService, SOCKET_EVENTS } from "./socket";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicOnlyRoute from "./components/PublicOnlyRoute";
 import HomePage from "./pages/HomePage";
@@ -19,21 +19,21 @@ function App() {
   useAuthSession();
 
   useEffect(() => {
-    gameSocket.connect();
+    socketService.connect();
 
     const handleConnect = () => {
-      console.log("🟢 Connected:", gameSocket.socket?.id);
+      console.log("🟢 Connected");
     };
     const handleDisconnect = () => {
       console.log("🔴 Disconnected");
     };
 
-    gameSocket.on(SOCKET_EVENTS.CONNECT, handleConnect);
-    gameSocket.on(SOCKET_EVENTS.DISCONNECT, handleDisconnect);
+    socketService.onConnect(handleConnect);
+    socketService.onDisconnect(handleDisconnect);
 
     return () => {
-      gameSocket.off(SOCKET_EVENTS.CONNECT, handleConnect);
-      gameSocket.off(SOCKET_EVENTS.DISCONNECT, handleDisconnect);
+      socketService.off(SOCKET_EVENTS.CONNECT, handleConnect);
+      socketService.off(SOCKET_EVENTS.DISCONNECT, handleDisconnect);
     };
   }, []);
 
