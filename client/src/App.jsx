@@ -11,6 +11,8 @@ import ProductPage from "./features/products/pages/ProductPage";
 import NegotiationPage from "./features/negotiation/pages/NegotiationPage";
 import ResultPage from "./features/negotiation/pages/ResultPage";
 import LeaderboardPage from "./features/leaderboard/pages/LeaderboardPage";
+import StatisticsPage from "./features/statistics/pages/StatisticsPage";
+import AnalyticsPage from "./features/analytics/pages/AnalyticsPage";
 import ProfilePage from "./features/profile/pages/ProfilePage";
 import SettingsPage from "./features/settings/pages/SettingsPage";
 import { useAuthSession } from "./features/auth/hooks/useAuthSession";
@@ -46,6 +48,8 @@ function App() {
         <Route path="/game/:gameId" element={<NegotiationPage />} />
         <Route path="/result" element={<ResultPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/statistics" element={<StatisticsPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>

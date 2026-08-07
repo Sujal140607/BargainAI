@@ -1,5 +1,6 @@
 import { Game } from "../models/game.model.js";
 import { User } from "../models/user.model.js";
+import { Statistics } from "../models/statistics.model.js";
 
 const RANK_SORT = { wins: -1, winRate: -1, gamesPlayed: -1 };
 
@@ -57,6 +58,30 @@ export const getUserStats = async (userId) => {
   const rank = await getUserRank(userId);
 
   return { gamesPlayed, wins, winRate, rank };
+};
+
+export const getUserStatistics = async (userId) => {
+  if (!userId) {
+    throw new Error("userId is required");
+  }
+
+  const [stats, rank] = await Promise.all([
+    Statistics.findOne({ user: userId }).lean(),
+    getUserRank(userId),
+  ]);
+
+  return {
+    totalGames: stats?.totalGames ?? 0,
+    totalWins: stats?.totalWins ?? 0,
+    totalLosses: stats?.totalLosses ?? 0,
+    winRate: stats?.winRate ?? 0,
+    totalSavings: stats?.totalSavings ?? 0,
+    averageSavings: stats?.averageSavings ?? 0,
+    bestDeal: stats?.bestDeal ?? 0,
+    averageRounds: stats?.averageRounds ?? 0,
+    rank,
+    highestRank: stats?.highestRank ?? 0,
+  };
 };
 
 export const getLeaderboard = async (limit = 10) => {

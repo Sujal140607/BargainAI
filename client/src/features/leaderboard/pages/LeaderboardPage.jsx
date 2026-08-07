@@ -3,10 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "../../../components/ui/Button";
 import ErrorMessage from "../../../components/ui/ErrorMessage";
 import { useAuth } from "../../auth/hooks/useAuth";
-import { useLeaderboard } from "../hooks/useLeaderboard";
-import TopNegotiators from "../components/TopNegotiators";
-import PerformanceCard from "../components/PerformanceCard";
-import BestDeals from "../components/BestDeals";
+import { useGetLeaderboardQuery } from "../api/leaderboardApi";
 import RankingTable from "../components/RankingTable";
 import Pagination from "../components/Pagination";
 
@@ -14,11 +11,16 @@ const PAGE_SIZE = 8;
 
 function LeaderboardPage() {
   const { user, logout, isLoading: isLoggingOut } = useAuth();
-  const { ranking, stats, bestDeals, isLoading, isError, error } =
-    useLeaderboard();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+
+  const {
+    data: ranking = [],
+    isLoading,
+    isError,
+    error,
+  } = useGetLeaderboardQuery({ limit: 100, page: 1 });
 
   const currentUserId = user?._id;
 
@@ -74,7 +76,7 @@ function LeaderboardPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-10 px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Leaderboard
@@ -84,14 +86,11 @@ function LeaderboardPage() {
           </p>
         </div>
 
-        {isError && <ErrorMessage>{error}</ErrorMessage>}
-
-        <TopNegotiators players={ranking} isLoading={isLoading} />
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <PerformanceCard stats={stats} isLoading={isLoading} />
-          <BestDeals deals={bestDeals} isLoading={isLoading} />
-        </div>
+        {isError && (
+          <ErrorMessage>
+            {error?.data?.message || error?.message || "Failed to load leaderboard"}
+          </ErrorMessage>
+        )}
 
         <section>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

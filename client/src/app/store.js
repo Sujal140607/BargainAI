@@ -15,6 +15,9 @@ import dashboardReducer from "../features/dashboard/redux/dashboardSlice";
 import gameReducer from "../features/game/redux/gameSlice";
 import negotiationReducer from "../features/negotiation/redux/negotiationSlice";
 import leaderboardReducer from "../features/leaderboard/redux/leaderboardSlice";
+import { leaderboardApi } from "../features/leaderboard/api/leaderboardApi";
+import { statisticsApi } from "../features/statistics/api/statisticsApi";
+import { analyticsApi } from "../features/analytics/api/analyticsApi";
 import profileReducer from "../features/profile/redux/profileSlice";
 
 const persistConfig = {
@@ -33,13 +36,19 @@ export const store = configureStore({
     negotiation: negotiationReducer,
     leaderboard: leaderboardReducer,
     profile: profileReducer,
+    [leaderboardApi.reducerPath]: leaderboardApi.reducer,
+    [statisticsApi.reducerPath]: statisticsApi.reducer,
+    [analyticsApi.reducerPath]: analyticsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }),
+    })
+      .concat(leaderboardApi.middleware)
+      .concat(statisticsApi.middleware)
+      .concat(analyticsApi.middleware),
 });
 
 export const persistor = persistStore(store);

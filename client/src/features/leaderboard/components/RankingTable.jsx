@@ -1,10 +1,14 @@
+import { formatCurrency, formatPercent } from "../../../utils/formatters";
+
 function RankBadge({ rank }) {
   const medal =
-    rank === 1 ? "bg-amber-500/20 text-amber-300" : rank === 2
-      ? "bg-neutral-500/20 text-neutral-300"
-      : rank === 3
-        ? "bg-orange-500/20 text-orange-300"
-        : "bg-neutral-800 text-neutral-400";
+    rank === 1
+      ? "bg-amber-500/20 text-amber-300"
+      : rank === 2
+        ? "bg-neutral-500/20 text-neutral-300"
+        : rank === 3
+          ? "bg-orange-500/20 text-orange-300"
+          : "bg-neutral-800 text-neutral-400";
 
   return (
     <span
@@ -50,60 +54,72 @@ function RankingTable({ rows, currentUserId }) {
   }
 
   return (
-    <ul className="space-y-2">
-      {rows.map((row) => {
-        const isYou =
-          currentUserId && String(row.userId) === String(currentUserId);
+    <div className="overflow-x-auto rounded-2xl border border-neutral-800 bg-neutral-900/60">
+      <table className="w-full min-w-[720px] text-left text-sm">
+        <thead>
+          <tr className="border-b border-neutral-800 text-xs tracking-wide text-neutral-500 uppercase">
+            <th className="px-4 py-3 font-semibold">Rank</th>
+            <th className="px-4 py-3 font-semibold">Player</th>
+            <th className="px-4 py-3 text-right font-semibold">Win Rate</th>
+            <th className="px-4 py-3 text-right font-semibold">
+              Total Savings
+            </th>
+            <th className="px-4 py-3 text-right font-semibold">Best Deal</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-neutral-800/70">
+          {rows.map((row) => {
+            const isYou =
+              currentUserId && String(row.userId) === String(currentUserId);
 
-        return (
-          <li
-            key={row.userId}
-            className={`grid grid-cols-[32px_1fr_auto] items-center gap-3 rounded-xl border px-4 py-3 sm:grid-cols-[32px_1fr_64px_64px_72px] ${
-              isYou
-                ? "border-violet-600/60 bg-violet-950/30"
-                : "border-neutral-800 bg-neutral-900/60"
-            }`}
-          >
-            <RankBadge rank={row.rank} />
-
-            <div className="flex min-w-0 items-center gap-3">
-              <Avatar name={row.name} avatar={row.avatar} />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">
-                  {row.name}
-                  {isYou && (
-                    <span className="ml-2 rounded-full bg-violet-600/40 px-2 py-0.5 text-[10px] font-bold tracking-wide text-violet-200 uppercase">
-                      You
-                    </span>
-                  )}
-                </p>
-                <p className="hidden text-xs text-neutral-500 sm:block">
-                  {row.gamesPlayed} game{row.gamesPlayed === 1 ? "" : "s"}
-                </p>
-              </div>
-            </div>
-
-            <p className="hidden text-right text-xs text-neutral-500 sm:block">
-              <span className="text-sm font-semibold text-white">
-                {row.wins}
-              </span>{" "}
-              wins
-            </p>
-            <p className="hidden text-right text-xs text-neutral-500 sm:block">
-              <span className="text-sm font-semibold text-white">
-                {row.gamesPlayed}
-              </span>{" "}
-              games
-            </p>
-            <p
-              className={`text-right text-sm font-bold ${getTone(row.winRate)}`}
-            >
-              {row.winRate}%
-            </p>
-          </li>
-        );
-      })}
-    </ul>
+            return (
+              <tr
+                key={row.userId}
+                className={
+                  isYou
+                    ? "bg-violet-950/40 transition"
+                    : "transition hover:bg-neutral-800/40"
+                }
+              >
+                <td className="px-4 py-3">
+                  <RankBadge rank={row.rank} />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={row.name} avatar={row.avatar} />
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-white">
+                        {row.name}
+                        {isYou && (
+                          <span className="ml-2 rounded-full bg-violet-600/40 px-2 py-0.5 text-[10px] font-bold tracking-wide text-violet-200 uppercase">
+                            You
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-neutral-500">
+                        {row.gamesPlayed} game
+                        {row.gamesPlayed === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td
+                  className={`px-4 py-3 text-right font-bold ${getTone(row.winRate)}`}
+                >
+                  {formatPercent(row.winRate)}
+                </td>
+                <td className="px-4 py-3 text-right font-semibold text-white">
+                  {formatCurrency(row.totalSavings)}
+                </td>
+                <td className="px-4 py-3 text-right font-semibold text-emerald-400">
+                  {formatCurrency(row.bestDeal)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
